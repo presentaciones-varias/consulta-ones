@@ -142,7 +142,7 @@ ggplotly(plot, tooltip = c("y")) %>% config(displayModeBar = F)
 
 </center>
 
-Todas las ONES declararon tener experiencia en la materia
+### Todas las ONES declararon tener experiencia en la materia
 
 ---
 background-image: url("imagenes/fondo2.PNG")
@@ -171,7 +171,7 @@ ggplotly(plot, tooltip = c("y")) %>% config(displayModeBar = F)
 
 </center>
 
-Aproximadamente la mitad de las instituciones que responde cuenta con una unidad especializada 
+### Aproximadamente la mitad de las instituciones que responde cuenta con una unidad especializada 
 
 ---
 background-image: url("imagenes/fondo2.PNG")
@@ -205,7 +205,7 @@ ggplotly(plot, tooltip = c("y")) %>% config(displayModeBar = F)
 </center>
 
 
-Las unidades especializadas trabajan con los equipos productores
+### Las unidades especializadas trabajan con los equipos productores
 
 ---
 background-image: url("imagenes/fondo2.PNG")
@@ -222,46 +222,10 @@ DT::datatable(editada %>%
                 filter(!is.na(`nombre unidad`)) %>% 
                 rename(país= pais),
                caption = htmltools::HTML("<center style='font-size: 20px; color:black'><b>Nombres de las unidades </b>  </center>"), 
-              options = list(pageLength = 7, dom = "p"))
-```
-
----
-background-image: url("imagenes/fondo2.PNG")
-background-size: contain;
-background-position: 100% 0%
-
-# Organigrama
-
-```{r lugar en el organigrama}
-wrap_text <- function(string, substring) {
+              options = list(pageLength = 7, dom = "p")) 
   
-  texto_destacado <- sprintf("<span style= 'color:red'> %s </span>", substring)    
-
-  full_html <- str_replace(string, substring, replacement = texto_destacado)
-  return( full_html) 
-}
-
-# Estos son los conceptos que se destacan en cada una de las respuestas
-conceptos_destacados <- c("Methods and Analysis", "Methodology Division", "Department for Digitalisation and Digital Services",
-                          "methodology direction", "Department of Data Governance", "Dirección General Adjunta de Investigación",
-                          "Survey Methods Research", "Data Science Academy", "Directorate for Research & Methodology",
-                          "Modern Statistical Methods and Data Science Branch"
-                          )
-
-organigrama_destacado <-  editada %>%
-  select(pais, organigrama ) %>%  
-  filter(!is.na(organigrama)) %>% 
-  mutate(organigrama = map2_chr(.$organigrama, conceptos_destacados, wrap_text  )) %>% 
-  mutate(organigrama = if_else(pais == "France", wrap_text(organigrama, "IT direction"), organigrama )) %>% 
-  rename(país= pais)
-
-DT::datatable(organigrama_destacado,
-               caption = htmltools::HTML("<center style='font-size: 20px; color:black'><b>Lugar en la organización </b>  </center>"),
-              escape = F,
-              options = list(pageLength = 4, dom = "p"))
+  
 ```
-
-Unidades vinculadas a áreas de metodología e investigación
 
 ---
 
@@ -274,32 +238,35 @@ background-position: 100% 0%
 
 ```{r relacion con unidades}
 
-centralizacion <- c("", "alta", "media", "baja", "", "alta", "baja", "baja", "alta", "media")
+
+centralizacion <- c("", "poco distribuida", "medianamente distribuida", "muy distribuida", "", "poco distribuida", "muy distribuida", "muy distribuida", "poco distribuida", "medianamente distribuida")
 capacitacion <- c("", "", "", "", "", "", "Sí", "Si", "", "") 
   
 DT::datatable(editada %>% 
+                mutate(pais = if_else(nombre_institucion %in% c("Bureau of Labor Statistics", "United States Census Bureau"), nombre_institucion, pais )) %>% 
                 select(pais, relacion_cliente) %>% 
                 filter(!is.na(relacion_cliente)) %>% 
                 mutate(centralizacion = centralizacion,
                        capacitacion = capacitacion) %>% 
                 rename(`relación con unidades` = relacion_cliente,
                        país= pais,
-                       centralización = centralizacion,
-                       capactiación = capacitacion
+                       `gestión ciencia de datos` = centralizacion,
+                       capacitación = capacitacion
                        ) %>% 
                 select(-`relación con unidades`),
                caption = htmltools::HTML("<center style='font-size: 20px; color:black'><b>Relación con unidades productoras </b>  </center>"),
               escape = F,
-              options = list(pageLength = 5, dom = "p"))
+              options = list( displayStart = 5, pageLength = 5, dom = "p")) %>% 
+  DT::formatStyle(
+  columns =  "país", 
+  target = 'row',
+  backgroundColor = DT::styleRow(c(6, 8, 10), c('yellow')) 
+  #backgroundColor = DT::styleEqual(c("México", "Poland", "Canada"), c('yellow', 'yellow', 'yellow'))  
+)
+  
 
 
 ```
-
-Polonia: muy descentralizado
-
-Canadá: medianamente centralizado
-
-México: muy centralizado
 
 ---
 background-image: url("imagenes/fondo2.PNG")
@@ -329,9 +296,9 @@ ggplotly(plot_perfiles, tooltip = c("perfil", "y")) %>% config(displayModeBar = 
 </center>
 
 
-Científicos de datos, ingenieros de datos y expertos en visualización (habilidades escasas en el INE)
+### Ingenieros de datos y expertos en visualización
 
-Los equipos incorporan profesionales que conocen el negocio (metodólogos y analistas de datos) 
+### Los equipos incorporan profesionales que conocen el negocio (metodólogos y analistas de datos) 
 
 
 ---
@@ -452,6 +419,41 @@ ggplotly(plot, tooltip = c("n", "algoritmo")) %>%
 ```
 
 </center>
+
+---
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Propuestas
+
+- Unidad que funcione a nivel central y colabore con los equipos técnicos y de operaciones
+
+--
+
+- Gestión del conocimiento semi distribuido
+  - Mentorías para instalar capacidades
+  - Resolución de problemas centralizadamente
+
+--
+
+- Acceso a infraestructura
+  - Autonomía, agilidad y flexibilidad
+  
+--
+
+- Capacitación a los equipos como tarea central
+
+--
+
+- Combinación de perfiles
+  - Metodólogos/analistas socioeconómicos
+  - Científicos de datos
+  - Ingenieros de datos
+  - Expertos en visualización 
+
+
+
 
 ---
 

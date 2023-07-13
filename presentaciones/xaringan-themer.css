@@ -206,28 +206,45 @@ blockquote {
 th, td {
   padding: 5px;
 }
+
+/*
 .remark-slide thead, .remark-slide tfoot, .remark-slide tr:nth-child(even) {
-  background: #FFEAD1;
+  background: green;   #FFEAD1; 
 }
+*/
+.remark-slide thead, .remark-slide tfoot, .remark-slide {
+  background:  #FFEAD1; 
+}
+
+
+
 table.dataTable tbody {
   background-color: var(--background-color);
   color: var(--text-color);
 }
+
+
 table.dataTable.display tbody tr.odd {
-  background-color: var(--background-color);
+  background-color: white ; /* var(--background-color) */
 }
 table.dataTable.display tbody tr.even {
-  background-color: #FFEAD1;
+  background-color: white; /* #FFEAD1 */
 }
+
 table.dataTable.hover tbody tr:hover, table.dataTable.display tbody tr:hover {
   background-color: rgba(255, 255, 255, 0.5);
 }
+
+
 .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_processing, .dataTables_wrapper .dataTables_paginate {
   color: var(--text-color);
 }
+
+
 .dataTables_wrapper .dataTables_paginate .paginate_button {
   color: var(--text-color) !important;
 }
+
 
 /* Slide Header Background for h1 elements */
 .remark-slide-content.header_background > h1 {
@@ -327,9 +344,12 @@ table.dataTable.hover tbody tr:hover, table.dataTable.display tbody tr:hover {
 
 table,  td {
   border: 1px solid black;
-  background-color: white;
+/*  background-color: white;*/
   padding: 1px;
 }
+
+
+
 
 
 .small .remark-code  {
