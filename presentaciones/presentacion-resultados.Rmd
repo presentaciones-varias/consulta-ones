@@ -1,0 +1,468 @@
+---
+title: "R and databases"
+subtitle: "calidad"
+author: 
+date: '`r Sys.Date()`'
+output:
+  xaringan::moon_reader:
+    seal: false
+    #lib_dir: libs
+    css: xaringan-themer.css
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: False
+      ratio: '13:9'
+---
+
+class: center, middle
+
+.linea-superior[]
+.linea-inferior[]
+
+<img src="imagenes/logo_portada2.png" width="200" />
+
+## Consulta a ONES sobre el uso de ciencia de datos
+
+## Proyecto Ciencia de Datos
+
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = TRUE)
+knitr::opts_chunk$set(message = FALSE, warning = F, eval = T, fig.align = "center", echo = F) 
+options(scipen = "999")
+```
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(xaringanthemer)
+library(tidyverse)
+library(kableExtra)
+library(readxl)
+library(plotly)
+library(feather)
+xaringanExtra::use_panelset()
+```
+
+
+
+```{r}
+editada <- read_feather("../data/editada.feather")
+etapas <- read_feather("../data/etapas.feather")
+algoritmo <- read_feather("../data/algoritmo.feather")
+lenguaje <- read_feather("../data/lenguaje.feather")
+apilados <- read_feather("../data/proyectos_apilados.feather")
+perfiles  <- read_feather("../data/df_perfiles.feather")
+iniciativas_long <- read_feather("../data/iniciativas_long.feather")
+
+
+```
+
+
+---
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# ONES consultadas
+
+
+Consultamos a 36 organismos fuera de Chile
+
+
+```{r}
+encuestados <- read_xlsx("../data/encuestados.xlsx")
+
+encuestados %>% 
+  filter(País != "Chile" | is.na(País)) %>% 
+  filter(!Institución %in% c("Banco Mundial", "UNECE", "CEPAL")) %>%  # se sacan porque no fueron contactados
+  count(organismo_multilateral) %>% 
+  rename(multilateral = organismo_multilateral) %>% 
+  kbl() %>% 
+  kableExtra::kable_styling()
+  
+  
+
+```
+
+--
+<br>
+
+<center>
+
+```{r, fig.height=4.5}
+tasa_respuesta <- encuestados %>% 
+  filter(País != "Chile" | is.na(País)) %>% 
+  filter(!Institución %in% c("Banco Mundial", "UNECE", "CEPAL")) %>%  # se sacan porque no fueron contactados
+  count(respuesta) %>% 
+  mutate(respuesta = if_else(is.na(respuesta), "no", respuesta),
+         porcentaje = round(n / sum(n) * 100, 1) ) %>% 
+  ggplot(aes(respuesta, porcentaje, fill = respuesta, text = n)) +
+  geom_bar(stat = "identity",  width=0.5) +
+  labs(title = "Tasa de respuesta en la consulta realizada") +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.text = element_text(size  = 14),
+        plot.title = element_text(hjust = 0.5),
+        axis.title.x = element_blank())
+
+ggplotly(tasa_respuesta, tooltip = c("x", "y", "text")) %>% 
+   config(displayModeBar = F)  
+
+```
+
+</center>
+
+---
+
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Experiencia institucional
+
+<center>
+
+
+```{r existe experiencia, fig.height=4.5}
+
+plot <- editada %>% 
+  count(existe_experiencia_ml) %>% 
+  rename(experiencia = existe_experiencia_ml) %>% 
+  bind_rows(data.frame(experiencia = "No", n = 0)) %>% 
+  ggplot(aes(experiencia, n, fill = experiencia)) +
+  geom_bar(stat = "identity", width=0.5) +
+  labs(title = "Número de ONES con experiencia en machine learning") +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none"
+        ) 
+ggplotly(plot, tooltip = c("y")) %>% config(displayModeBar = F)
+```
+
+</center>
+
+Todas las ONES declararon tener experiencia en la materia
+
+---
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Experiencia institucional
+
+<center>
+
+```{r existe unidad cd, fig.height=4.5}
+plot <- editada %>% 
+  count(existe_unidad) %>% 
+  rename(existe = existe_unidad) %>% 
+  ggplot(aes(existe, n, fill = existe)) +
+  geom_bar(stat = "identity", width=0.5) +
+  labs(title = "Existe unidad dedicada a ciencia de datos") +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none"
+        ) 
+
+ggplotly(plot, tooltip = c("y")) %>% config(displayModeBar = F)
+```
+
+</center>
+
+Aproximadamente la mitad de las instituciones que responde cuenta con una unidad especializada 
+
+---
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Experiencia institucional
+
+<center>
+
+```{r trabaja con unidades productoras, fig.height=4.5}
+
+plot <- editada %>% 
+  count(cliente_productores) %>% 
+  rename(apoya = cliente_productores) %>% 
+  filter(!is.na(apoya)) %>% 
+  bind_rows(data.frame(apoya = "No", n = 0)) %>% 
+  ggplot(aes(apoya, n, fill = apoya)) +
+  geom_bar(stat = "identity", width=0.5) +
+  labs(title = "La unidad de ciencia de datos apoya\na las unidades productoras") +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none"
+        ) 
+
+ggplotly(plot, tooltip = c("y")) %>% config(displayModeBar = F)
+
+
+```
+</center>
+
+
+Las unidades especializadas trabajan con los equipos productores
+
+---
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Nombres de las unidades
+
+```{r tabla nombres unidades}
+
+DT::datatable(editada %>% 
+                mutate(`nombre unidad` = if_else(pais == "Poland", "The Data Science Academy", nombre_unidad_ds )) %>% 
+                select(pais, `nombre unidad`) %>%  
+                filter(!is.na(`nombre unidad`)) %>% 
+                rename(país= pais),
+               caption = htmltools::HTML("<center style='font-size: 20px; color:black'><b>Nombres de las unidades </b>  </center>"), 
+              options = list(pageLength = 7, dom = "p"))
+```
+
+---
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Organigrama
+
+```{r lugar en el organigrama}
+wrap_text <- function(string, substring) {
+  
+  texto_destacado <- sprintf("<span style= 'color:red'> %s </span>", substring)    
+
+  full_html <- str_replace(string, substring, replacement = texto_destacado)
+  return( full_html) 
+}
+
+# Estos son los conceptos que se destacan en cada una de las respuestas
+conceptos_destacados <- c("Methods and Analysis", "Methodology Division", "Department for Digitalisation and Digital Services",
+                          "methodology direction", "Department of Data Governance", "Dirección General Adjunta de Investigación",
+                          "Survey Methods Research", "Data Science Academy", "Directorate for Research & Methodology",
+                          "Modern Statistical Methods and Data Science Branch"
+                          )
+
+organigrama_destacado <-  editada %>%
+  select(pais, organigrama ) %>%  
+  filter(!is.na(organigrama)) %>% 
+  mutate(organigrama = map2_chr(.$organigrama, conceptos_destacados, wrap_text  )) %>% 
+  mutate(organigrama = if_else(pais == "France", wrap_text(organigrama, "IT direction"), organigrama )) %>% 
+  rename(país= pais)
+
+DT::datatable(organigrama_destacado,
+               caption = htmltools::HTML("<center style='font-size: 20px; color:black'><b>Lugar en la organización </b>  </center>"),
+              escape = F,
+              options = list(pageLength = 4, dom = "p"))
+```
+
+Unidades vinculadas a áreas de metodología e investigación
+
+---
+
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Interacción con unidades productoras
+
+
+```{r relacion con unidades}
+
+centralizacion <- c("", "alta", "media", "baja", "", "alta", "baja", "baja", "alta", "media")
+capacitacion <- c("", "", "", "", "", "", "Sí", "Si", "", "") 
+  
+DT::datatable(editada %>% 
+                select(pais, relacion_cliente) %>% 
+                filter(!is.na(relacion_cliente)) %>% 
+                mutate(centralizacion = centralizacion,
+                       capacitacion = capacitacion) %>% 
+                rename(`relación con unidades` = relacion_cliente,
+                       país= pais,
+                       centralización = centralizacion,
+                       capactiación = capacitacion
+                       ) %>% 
+                select(-`relación con unidades`),
+               caption = htmltools::HTML("<center style='font-size: 20px; color:black'><b>Relación con unidades productoras </b>  </center>"),
+              escape = F,
+              options = list(pageLength = 5, dom = "p"))
+
+
+```
+
+Polonia: muy descentralizado
+
+Canadá: medianamente centralizado
+
+México: muy centralizado
+
+---
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Perfiles contratados
+
+<center>
+
+```{r perfiles contratados, fig.height=5, fig.width=10}
+
+plot_perfiles <-  perfiles %>% 
+  count(perfil) %>% 
+  ggplot(aes( reorder(perfil, desc(n)) , n, fill = perfil, text = perfil )) +
+  geom_bar(stat = "identity") +
+  theme_bw() +
+  labs(title = "Perfiles contratados por las unidades") +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)
+        ) 
+ggplotly(plot_perfiles, tooltip = c("perfil", "y")) %>% config(displayModeBar = F)
+
+
+```
+</center>
+
+
+Científicos de datos, ingenieros de datos y expertos en visualización (habilidades escasas en el INE)
+
+Los equipos incorporan profesionales que conocen el negocio (metodólogos y analistas de datos) 
+
+
+---
+
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Tareas abordadas
+
+<center>
+
+```{r tipos iniciativas}
+plot <- iniciativas_long %>% 
+  group_by(iniciativa) %>% 
+  summarise(n = sum(n)) %>% 
+  ggplot(aes(x = reorder(iniciativa, desc(n)), n, fill = iniciativa) ) +
+  geom_bar(stat = "identity") +
+  labs(title = "Tipos de iniciativas relacionadas con machine learning") +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+         panel.border = element_blank(),
+        legend.position = "none"
+        ) 
+
+ggplotly(plot, tooltip = c("n", "iniciativa")) %>%
+  config(displayModeBar = F) %>% 
+  layout(title = list(text = paste0('Tipos de iniciativas relacionadas con machine learning')))
+
+  
+  
+```
+
+</center>
+
+
+---
+
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Lenguajes utilizados
+
+<center>
+
+
+```{r lenguajes}
+plot <- lenguaje %>% 
+  count(lenguaje) %>% 
+  ggplot(aes(x = reorder(lenguaje, n), y = n, fill = lenguaje)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Lenguajes de programación utilizados",
+       subtitle = "Reporte de los 3 proyectos más importantes en cada ONE") +
+  theme_bw() +
+    theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+         panel.border = element_blank(),
+        legend.position = "none"
+        ) 
+
+  
+ggplotly(plot, tooltip = c("n", "lenguaje")) %>%
+ config(displayModeBar = F) %>% 
+ layout(title = list(text = paste0('Lenguajes de programación utilizados',
+                                    '<br>',
+                                    '<sup>',
+                                     'Reporte de los 3 proyectos más importantes en cada ONE','</sup>')))
+
+
+```
+</center>
+
+
+---
+background-image: url("imagenes/fondo2.PNG")
+background-size: contain;
+background-position: 100% 0%
+
+# Algoritmos utilizados
+
+<center>
+
+
+```{r algoritmos, fig.width=10}
+plot <- algoritmo %>% 
+  count(algoritmo) %>%
+  mutate(algoritmo2 = if_else(algoritmo %in% c("BERT", "Large Language Model", "FastText", "NLP") , "Neural Networks", algoritmo )) %>% 
+  mutate(algoritmo2 = if_else(algoritmo %in% c("Logistic Regression (but more advanced NLP approaches are studied)") , 
+                              "Logistic Regression", algoritmo2 )) %>% 
+  mutate(algoritmo2 = if_else(algoritmo %in% c("GLM") , "Generalised Linear Models", algoritmo2 )) %>% 
+  mutate(algoritmo2 = if_else(algoritmo %in% c("No info available", "not applicable. multiple models are made available through the platform", "Yet to determine"), "sin información", algoritmo2)) %>% 
+  mutate(algoritmo2 = if_else(algoritmo %in% c("Xgboost", "lightgbm"), "xgboost-lightgbm", algoritmo2)) %>% 
+  mutate(algoritmo2 = if_else(algoritmo %in% c("Technical component", "Nearest neighbor", "n-grams analysis", "Dynamic mapping in SolR"), "otros", algoritmo2)) %>% 
+  group_by(algoritmo2) %>% 
+  summarise(n = sum(n)) %>% 
+  ggplot(aes(x = reorder(algoritmo2, n), y = n, fill = algoritmo2)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_bw() +
+    theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+         panel.border = element_blank(),
+        legend.position = "none"
+        ) 
+
+ggplotly(plot, tooltip = c("n", "algoritmo")) %>% 
+  config(displayModeBar = F) %>% 
+  layout(title = list(text = paste0('Algoritmos de machine learning utilizados',
+                                    '<br>',
+                                    '<sup>',
+                                     'Reporte de los 3 proyectos más importantes en cada ONE','</sup>')))
+
+```
+
+</center>
+
+---
+
+class: center, middle
+
+.linea-superior[]
+.linea-inferior[]
+
+<img src="imagenes/logo_portada2.png" width="200" />
+
+
+## Consulta a ONES sobre el uso de ciencia de datos
+
+## Proyecto Ciencia de Datos

@@ -1,0 +1,340 @@
+---
+title: "Informe ejecutivo consulta internacional sobre uso de machine learning"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(feather)
+library(tidyverse)
+library(plotly)
+library(DT)
+library(countrycode)
+library(ggimage)
+
+
+```
+
+
+```{r}
+editada <- read_feather("../data/editada.feather")
+etapas <- read_feather("../data/etapas.feather")
+algoritmo <- read_feather("../data/algoritmo.feather")
+lenguaje <- read_feather("../data/lenguaje.feather")
+apilados <- read_feather("../data/proyectos_apilados.feather")
+perfiles  <- read_feather("../data/df_perfiles.feather")
+iniciativas_long <- read_feather("../data/iniciativas_long.feather")
+
+
+```
+
+
+## Results {.tabset}
+
+### Institucionalidad
+
+
+```{r existe experiencia}
+
+plot <- editada %>% 
+  count(existe_experiencia_ml) %>% 
+  rename(experiencia = existe_experiencia_ml) %>% 
+  bind_rows(data.frame(experiencia = "No", n = 0)) %>% 
+  ggplot(aes(experiencia, n, fill = experiencia)) +
+  geom_bar(stat = "identity", width=0.5) +
+  labs(title = "Experiencia institucional en machine learning") +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5)
+        ) 
+
+ggplotly(plot, tooltip = c("y")) %>% config(displayModeBar = F)
+```
+
+
+```{r existe unidad cd}
+plot <- editada %>% 
+  count(existe_unidad) %>% 
+  rename(existe = existe_unidad) %>% 
+  ggplot(aes(existe, n, fill = existe)) +
+  geom_bar(stat = "identity", width=0.5) +
+  labs(title = "Existe unidad dedicada a ciencia de datos") +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5)
+        ) 
+
+ggplotly(plot, tooltip = c("y")) %>% config(displayModeBar = F)
+```
+
+
+```{r trabaja con unidades productoras}
+
+plot <- editada %>% 
+  count(cliente_productores) %>% 
+  rename(apoya = cliente_productores) %>% 
+  filter(!is.na(apoya)) %>% 
+  bind_rows(data.frame(apoya = "No", n = 0)) %>% 
+  ggplot(aes(apoya, n, fill = apoya)) +
+  geom_bar(stat = "identity", width=0.5) +
+  labs(title = "La unidad de ciencia de datos apoya a las unidades productoras") +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5)
+        ) 
+
+ggplotly(plot, tooltip = c("y")) %>% config(displayModeBar = F)
+
+
+```
+
+
+```{r tabla nombres unidades}
+
+DT::datatable(editada %>% 
+                mutate(`nombre unidad` = if_else(pais == "Poland", "The Data Science Academy", nombre_unidad_ds )) %>% 
+                select(pais, `nombre unidad`) %>%  
+                filter(!is.na(`nombre unidad`)),
+               caption = htmltools::HTML("<center style='font-size: 20px; color:black'><b>Nombres de las unidades </b>  </center>"))
+```
+
+```{r lugar en el organigrama}
+
+wrap_text <- function(string, substring) {
+  
+  texto_destacado <- sprintf("<span style= 'color:red'> %s </span>", substring)    
+
+  full_html <- str_replace(string, substring, replacement = texto_destacado)
+  return( full_html) 
+}
+
+# Estos son los conceptos que se destacan en cada una de las respuestas
+conceptos_destacados <- c("Methods and Analysis", "Methodology Division", "Department for Digitalisation and Digital Services",
+                          "methodology direction", "Department of Data Governance", "Dirección General Adjunta de Investigación",
+                          "Survey Methods Research", "Data Science Academy", "Directorate for Research & Methodology",
+                          "Modern Statistical Methods and Data Science Branch"
+                          )
+
+organigrama_destacado <-  editada %>%
+  select(pais, organigrama ) %>%  
+  filter(!is.na(organigrama)) %>% 
+  mutate(organigrama = map2_chr(.$organigrama, conceptos_destacados, wrap_text  )) %>% 
+  mutate(organigrama = if_else(pais == "France", wrap_text(organigrama, "IT direction"), organigrama ))
+
+DT::datatable(organigrama_destacado,
+               caption = htmltools::HTML("<center style='font-size: 20px; color:black'><b>Lugar en la organización </b>  </center>"),
+              escape = F)
+```
+
+
+```{r relacion con unidades}
+
+centralizacion <- c("", "alta", "media", "baja", "", "alta", "baja", "baja", "alta", "media")
+capacitacion <- c("", "", "", "", "", "", "Sí", "Si", "", "") 
+  
+DT::datatable(editada %>% 
+                select(pais, relacion_cliente) %>% 
+                filter(!is.na(relacion_cliente)) %>% 
+                mutate(centralizacion = centralizacion,
+                       capacitacion = capacitacion) %>% 
+                rename(`relacion con unidades` = relacion_cliente),
+               caption = htmltools::HTML("<center style='font-size: 20px; color:black'><b>Relación con unidades productoras </b>  </center>"),
+              escape = F)
+
+
+```
+
+
+```{r perfiles contratados, fig.width=10}
+
+plot_perfiles <-  perfiles %>% 
+  count(perfil) %>% 
+  ggplot(aes( reorder(perfil, desc(n)) , n, fill = perfil, text = perfil )) +
+  geom_bar(stat = "identity") +
+  theme_bw() +
+  labs(title = "Perfiles contratados por las unidades") +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)
+        ) 
+
+
+ggplotly(plot_perfiles, tooltip = c("perfil", "y")) %>% config(displayModeBar = F)
+
+
+```
+
+
+### Implementaciones
+
+
+```{r total iniciativas}
+
+editada <- editada %>% 
+  mutate(pais = case_when(
+    pais == "México" ~ "mexico",
+    pais == "España" ~ "spain",
+    T ~ pais
+  ))
+
+editada$iso2 <- countrycode(editada$pais, "country.name", "iso2c")
+
+datos <- editada %>% 
+  filter(nombre_institucion != "OECD") %>% 
+  mutate(pais2 = factor(pais2, levels = pais2)) %>%
+  select(pais2,suma_iniciativas, iso2) 
+
+plot <- datos %>% 
+  ggplot(aes(y = reorder(pais2, suma_iniciativas), x = suma_iniciativas)) +
+  geom_col(width = 0.85, fill = "#0084ff") +
+  geom_flag(x = -1, aes(image = iso2))  +
+  labs(title = "Cantidad de iniciativas de machine learning") +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+         panel.border = element_blank()
+        ) 
+plot
+```
+
+
+```{r tipos iniciativas}
+plot <- iniciativas_long %>% 
+  group_by(iniciativa) %>% 
+  summarise(n = sum(n)) %>% 
+  ggplot(aes(x = reorder(iniciativa, desc(n)), n, fill = iniciativa) ) +
+  geom_bar(stat = "identity") +
+  labs(title = "Tipos de iniciativas relacionadas con machine learning") +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+         panel.border = element_blank(),
+        legend.position = "none"
+        ) 
+
+ggplotly(plot, tooltip = c("n", "iniciativa")) %>%
+  config(displayModeBar = F) %>% 
+  layout(title = list(text = paste0('Tipos de iniciativas relacionadas con machine learning')))
+
+  
+  
+```
+
+```{r etapas}
+
+plot <- etapas %>% 
+  count(etapas) %>% 
+  mutate(etapas = fct_relevel(etapas, "Especificación de necesidades", "Diseño", "Construcción", "Recolección", "Procesamiento", "Análisis", "Difusión", "Evaluación")) %>% 
+  ggplot(aes(x = reorder(etapas, desc(etapas)), y = n, fill = etapas)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Etapas del GSBPM en el que inciden los proyectos",
+       subtitle = "Reporte de los 3 proyectos más importantes en cada ONE") +
+  theme_bw() +
+    theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+         panel.border = element_blank(),
+        legend.position = "none"
+        ) 
+
+  
+ggplotly(plot, tooltip = c("n", "etapas")) %>%
+  config(displayModeBar = F) %>% 
+  layout(title = list(text = paste0('Etapas del GSBPM en el que inciden los proyectos',
+                                    '<br>',
+                                    '<sup>',
+                                     'Reporte de los 3 proyectos más importantes en cada ONE','</sup>')))
+
+
+```
+
+
+```{r lenguajes}
+plot <- lenguaje %>% 
+  count(lenguaje) %>% 
+  ggplot(aes(x = reorder(lenguaje, n), y = n, fill = lenguaje)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Lenguajes de programación utilizados",
+       subtitle = "Reporte de los 3 proyectos más importantes en cada ONE") +
+  theme_bw() +
+    theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+         panel.border = element_blank(),
+        legend.position = "none"
+        ) 
+
+  
+ggplotly(plot, tooltip = c("n", "lenguaje")) %>%
+ config(displayModeBar = F) %>% 
+ layout(title = list(text = paste0('Lenguajes de programación utilizados',
+                                    '<br>',
+                                    '<sup>',
+                                     'Reporte de los 3 proyectos más importantes en cada ONE','</sup>')))
+
+
+```
+
+
+
+```{r algoritmos, fig.width=10}
+plot <- algoritmo %>% 
+  count(algoritmo) %>% 
+  ggplot(aes(x = reorder(algoritmo, n), y = n, fill = algoritmo)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_bw() +
+    theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+         panel.border = element_blank(),
+        legend.position = "none"
+        ) 
+
+  
+ggplotly(plot, tooltip = c("n", "algoritmo")) %>% 
+  config(displayModeBar = F) %>% 
+  layout(title = list(text = paste0('Algoritmos de machine learning utilizados',
+                                    '<br>',
+                                    '<sup>',
+                                     'Reporte de los 3 proyectos más importantes en cada ONE','</sup>')))
+
+```
+
+
+### Capacidades
+
+```{r capacidades unidades}
+
+plot <- editada %>% 
+  filter(nombre_institucion != "OECD") %>% 
+  select(pais, capacidad_implementacion_ml_clientes, conocimiento_ml_clientes, continuidad_ml_cliente) %>% 
+  pivot_longer(-pais, names_to = "capacidad", values_to = "valor") %>% 
+  mutate(capacidad = str_remove(capacidad, "_ml_clientes")) %>% 
+  mutate(capacidad = case_when(
+    capacidad == "capacidad_implementacion" ~ "...son capaces de implementar\brestrategias de ML",
+    capacidad == "conocimiento" ~ "...tienen un alto nivel de conocimiento sobre ML",
+      capacidad == "continuidad_ml_cliente" ~ "...son capaces de dar continuidad y mantenimiento a modelos creados por especialistas en la materia"
+  )) %>% 
+  group_by(capacidad, valor) %>% 
+  summarise(contar = n()) %>% 
+  mutate(valor = fct_relevel(valor, "Muy de acuerdo", "De acuerdo", "En desacuerdo", "Muy en desacuerdo" )) %>% 
+  ggplot(aes(x = valor, y = contar, fill = valor)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Los equipos encargados de las operaciones estadísticas...") +
+  coord_flip()+
+  facet_wrap(~capacidad, labeller = label_wrap_gen(width=25)) +
+    theme_bw() +
+    theme(axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+         panel.border = element_blank(),
+        legend.position = "none"
+        ) 
+
+plot
+```
+
+
